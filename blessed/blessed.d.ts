@@ -10,6 +10,7 @@ declare module "blessed"
         export function Node (options?:INodeOptions) :INode;
         export function Line (options?:ILineOptions) :ILine;
         export function Element (options?:IElementOptions) :IElement;
+        export function Form (options?:IFormOptions) :IForm;
         export function List (options?:IListOptions) :IList;
         export function FileManager (options?:IFileManagerOptions) :IFileManager;
         export function Terminal (options?:ITerminalOptions) :ITerminal;
@@ -55,6 +56,15 @@ declare module "blessed"
             width?:number|string;
             /** height of the element, can be a number, percentage (0-100%), or keyword (half or shrink). */
             height?:number|string;
+        }
+
+        export interface IKeyCode {
+            name: string;
+            ctrl: boolean;
+            meta: boolean;
+            shift: boolean;
+            sequence: string;
+            full: string;
         }
 
         export interface INodeOptions
@@ -112,8 +122,8 @@ declare module "blessed"
             tabSize?: number;
             /** automatically position child elements with border and padding in mind. */
             autoPadding?: boolean;
-            /** create a log file. see log method. */
-            log?: boolean;
+            /** the name of the logfile to use.  if specified but the file does not exist, it will be created. see log method. */
+            log?: string;
             /** dump all output and input to desired file. can be used together with log option if set as a boolean. */
             dump?: any;
             /** debug mode. enables usage of the debug method. */
@@ -165,7 +175,7 @@ declare module "blessed"
             title: string;
 
             /** write string to the log file if one was created. */
-            log(...msg:string[]): void;
+            log(...msg:any[]): void;
             /** same as the log method, but only gets called if the debug option was set. */
             debug(...msg:string[]): void;
             /** allocate a new pending screen buffer and a new output screen buffer. */
@@ -195,15 +205,15 @@ declare module "blessed"
             /** "rewind" focus to the last visible and attached element. */
             rewindFocus(): void;
             /** bind a keypress listener for a specific key. */
-            key(keyEvents:string|string[], callback:(character:any, key:any) => void) :void;
+            key(keyEvents:string|string[], callback:(character:string, keyCode:IKeyCode) => void) :void;
             /** bind a keypress listener for a specific key once. */
-            onceKey(keyEvents:string|string[], callback:(character:any, key:any) => void) :void;
+            onceKey(keyEvents:string|string[], callback:(character:string, keyCode:IKeyCode) => void) :void;
             /** remove a keypress listener for a specific key. */
-            unkey(name, listener): void;
+            unkey(name:string, listener): void;
             /** spawn a process in the foreground, return to blessed app after exit. */
-            spawn(file, args, options): void;
+            spawn(file:string, args, options): void;
             /** spawn a process in the foreground, return to blessed app after exit. executes callback on error or exit. */
-            exec(file, args, options, callback): void;
+            exec(file:string, args, options, callback): void;
             /** read data from text editor. */
             readEditor(options:{}, callback): void;
             /** set effects based on two events and attributes. */
@@ -320,7 +330,7 @@ declare module "blessed"
             /** focus element. */
             focus() :void;
             /** bind a keypress listener for a specific key. */
-            key(name:string, listener:() => void) :void;
+            key(name:string|string[], listener:(character?:any, keyCode?:any) => void) :void;
             /** bind a keypress listener for a specific key once. */
             onceKey(name:string, listener:() => void) :void;
             /** remove a keypress listener for a specific key. */
@@ -531,6 +541,14 @@ declare module "blessed"
             // on(event:'cancel', callback:()     => void) :void;
             // on(event:'reset',  callback:()     => void) :void;
 
+            next() :void;
+            previous() :void;
+
+            resetSelected() :void;
+            /** focus first form element. */
+            focusFirst() :void;
+            /** focus last form element. */
+            focusLast() :void;
             /** focus next form element. */
             focusNext() :void;
             /** focus previous form element. */
@@ -555,6 +573,10 @@ declare module "blessed"
         export interface IFileManager extends IList
         {
             cwd: string;
+
+            // on(event:string,   callback:()     => void) :void;
+            // on(event:'cd', callback:(data) => void) :void;
+            // on(event:'file', callback:(data) => void) :void;
 
             /** refresh the file list (perform a readdir on cwd and update the list items). */
             refresh (cwd?:string, callback?:() => void) :void;

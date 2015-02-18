@@ -15,6 +15,8 @@ declare module "blessed"
         export function FileManager (options?:IFileManagerOptions) :IFileManager;
         export function Terminal (options?:ITerminalOptions) :ITerminal;
 
+        export var colors :IColors;
+
         export interface IColorPair {
             /** background, must be number (-1 for default). */
             bg?: number;
@@ -65,6 +67,24 @@ declare module "blessed"
             shift: boolean;
             sequence: string;
             full: string;
+        }
+
+        export interface IProgram
+        {
+            /**
+                Wrap the given text in terminal formatting codes corresponding to the given attribute
+                name. The `attr` string can be of the form `red fg` or `52 bg` where `52` is a 0-255
+                integer color number.
+            */
+            text (text:string, attr:string) :string;
+        }
+
+        export interface IColors {
+            /** Either pass a hex string, an array of 3 numbers, or three separate numbers representing an RGB value.  This returns the 0-255 color number for that color. */
+            match (r:string|number[]|number, g?:number, b?:number) :number;
+
+            /** An array of the 255 colors as hex strings. */
+            colors: string[];
         }
 
         export interface INodeOptions
@@ -319,6 +339,7 @@ declare module "blessed"
             /** calculated relative bottom offset. */
             rbottom: number;
 
+            sattr();
             /** write content and children to the screen buffer. */
             render() :void;
             /** hide element. */
@@ -335,8 +356,8 @@ declare module "blessed"
             onceKey(name:string, listener:() => void) :void;
             /** remove a keypress listener for a specific key. */
             unkey(name:string, listener:() => void) :void;
-            /** same asel.on('screen', ...) except this will automatically cleanup listeners after the element is detached. */
-            onScreenEvent(type, listener:() => void) :void;
+            /** same as el.on('screen', ...) except this will automatically cleanup listeners after the element is detached. */
+            onScreenEvent(type, listener:(...args:any[]) => void) :void;
             /** set the z-index of the element (changes rendering order). */
             setIndex(z:number) :void;
             /** put the element in front of its siblings. */
@@ -467,6 +488,13 @@ declare module "blessed"
 
         export interface IList extends IBox
         {
+            /** The text of the currently selected item. */
+            value:string;
+            /** The items in the list. */
+            items:string[];
+            /** The index of the current selection. */
+            selected:number;
+
             /** add an item based on a string. */
             addItem(text:string) :void;
             /** returns the item index from the list. child can be an element, index, or string. */
@@ -488,7 +516,10 @@ declare module "blessed"
             /** select item below selected. */
             down(amount:number) :void;
             /** show/focus list and pick an item. the callback is executed with the result. */
-            pick(callback:(result) => void) :void;
+            pick(cwd:string, callback:(err:any, file:string) => void) :void;
+
+            /** show/focus list and pick an item. the callback is executed with the result. */
+            pick(callback:(err:any, file:string) => void) :void;
         }
 
         //
@@ -570,6 +601,13 @@ declare module "blessed"
             cwd?: string;
         }
 
+        export interface IDirectoryEntry {
+            name: string;
+            text: string;
+            dir: boolean;
+            symlink: boolean;
+        }
+
         export interface IFileManager extends IList
         {
             cwd: string;
@@ -577,6 +615,8 @@ declare module "blessed"
             // on(event:string,   callback:()     => void) :void;
             // on(event:'cd', callback:(data) => void) :void;
             // on(event:'file', callback:(data) => void) :void;
+
+            useFormatter (formatterFn:(entry:IDirectoryEntry) => IDirectoryEntry) :void;
 
             /** refresh the file list (perform a readdir on cwd and update the list items). */
             refresh (cwd?:string, callback?:() => void) :void;

@@ -1,51 +1,53 @@
+// Type definitions for blessed 0.1.5
+// Project: https://github.com/chjj/blessed
+// Definitions by: bryn austin bellomy <https://github.com/brynbellomy>
+// Definitions: https://github.com/borisyankov/DefinitelyTyped
+
+///<reference path="../node/node.d.ts"/>
 
 declare module "blessed"
 {
     import events = require('events');
+    import buffer = require('buffer');
+    import child_process = require('child_process');
 
     module Blessed
     {
-        export function Screen (options?:IScreenOptions) :IScreen;
-        export function Box (options?:IBoxOptions) :IBox;
-        export function Node (options?:INodeOptions) :INode;
-        export function Line (options?:ILineOptions) :ILine;
-        export function Element (options?:IElementOptions) :IElement;
-        export function Form (options?:IFormOptions) :IForm;
-        export function List (options?:IListOptions) :IList;
-        export function FileManager (options?:IFileManagerOptions) :IFileManager;
-        export function Terminal (options?:ITerminalOptions) :ITerminal;
+        export var colors: Colors;
 
-        export var colors :IColors;
+        export interface GenericCallback {
+            (...args:any[]): void;
+        }
 
-        export interface IColorPair {
+        export interface ColorPair {
             /** background, must be number (-1 for default). */
             bg?: number;
             /** foreground, must be number (-1 for default). */
             fg?: number;
         }
 
-        export interface IStyle extends IColorPair {
+        export interface Style extends ColorPair {
             bold?: boolean;
             underline?: boolean;
-            border: IBorder;
-            hover: IColorPair;
+            border: Border;
+            hover: ColorPair;
         }
 
-        export interface IBorder extends IColorPair {
+        export interface Border extends ColorPair {
             /** type of border ('line' or 'bg'). */
             type?: string; //'line'|'bg';
             /** character to use if bg type, default is space. */
             ch?: string;
         }
 
-        export interface IPadding {
+        export interface Padding {
             top?:number;
             right?:number;
             bottom?:number;
             left?:number;
         }
 
-        export interface IPosition {
+        export interface Position {
             /** offsets of the element relative to its parent. can be a number, percentage (0-100%), or keyword (center). right and bottom do not accept keywords. */
             top?:number|string;
             /** offsets of the element relative to its parent. can be a number, percentage (0-100%), or keyword (center). right and bottom do not accept keywords. */
@@ -60,7 +62,7 @@ declare module "blessed"
             height?:number|string;
         }
 
-        export interface IKeyCode {
+        export interface KeyCode {
             name: string;
             ctrl: boolean;
             meta: boolean;
@@ -69,42 +71,44 @@ declare module "blessed"
             full: string;
         }
 
-        export interface IProgram
+        export class Program
         {
             /**
                 Wrap the given text in terminal formatting codes corresponding to the given attribute
                 name. The `attr` string can be of the form `red fg` or `52 bg` where `52` is a 0-255
                 integer color number.
             */
-            text (text:string, attr:string) :string;
+            text (text:string, attr:string): string;
         }
 
-        export interface IColors {
+        export interface Colors {
             /** Either pass a hex string, an array of 3 numbers, or three separate numbers representing an RGB value.  This returns the 0-255 color number for that color. */
-            match (r:string|number[]|number, g?:number, b?:number) :number;
+            match (r:string|number[]|number, g?:number, b?:number): number;
 
             /** An array of the 255 colors as hex strings. */
             colors: string[];
         }
 
-        export interface INodeOptions
+        export interface NodeOptions
         {
-            screen?: IScreen;
-            parent?: INode;
-            children?: INode[];
+            screen?: Screen;
+            parent?: Node;
+            children?: Node[];
         }
 
-        export interface INode extends events.EventEmitter
+        export class Node extends events.EventEmitter
         {
-            type        :string;
-            options     :INodeOptions;
-            parent      :INode;
-            screen      :IScreen;
-            children    :INode[];
-            data        :any;
-            _           :any;
-            $           :any;
-            index       :number;
+            constructor(options?:NodeOptions);
+
+            type       : string;
+            options    : NodeOptions;
+            parent     : Node;
+            screen     : Screen;
+            children   : Node[];
+            data       : any;
+            _          : any;
+            $          : any;
+            index      : number;
 
             // on(event:string, callback:() => void);
             // on(event:'adopt', callback:() => void);
@@ -113,22 +117,22 @@ declare module "blessed"
             // on(event:'attach', callback:() => void);
             // on(event:'detach', callback:() => void);
 
-            prepend(node:INode) :void;
-            append(node:INode) :void;
-            remove(node:INode) :void;
-            insert(node:INode, index:number) :void;
-            insertBefore(node:INode, refNode:INode) :void;
-            insertAfter(node:INode, refNode:INode) :void;
-            detach() :void;
-            // emitDescendants() :void;
-            // get(key:string) :any;
-            // get(key:string, default:any) :any;
-            // set(key:string, value:any) :void;
+            prepend(node:Node): void;
+            append(node:Node): void;
+            remove(node:Node): void;
+            insert(node:Node, index:number): void;
+            insertBefore(node:Node, refNode:Node): void;
+            insertAfter(node:Node, refNode:Node): void;
+            detach(): void;
+            // emitDescendants(): void;
+            // get(key:string): any;
+            // get(key:string, default:any): any;
+            // set(key:string, value:any): void;
         }
 
-        export interface IScreenOptions extends INodeOptions
+        export interface ScreenOptions extends NodeOptions
         {
-            /** the blessed Program to be associated with. */
+            /** the blessed Program to be associated with.  will be automatically instantiated if none is provided. */
             program?: any;
             /** attempt to perform CSR optimization on all possible elements (not just full-width ones, elements with uniform cells to their sides). this is known to cause flickering with elements that are not full-width, however, it is more optimal for terminal rendering. */
             smartCSR?: boolean;
@@ -146,15 +150,37 @@ declare module "blessed"
             log?: string;
             /** dump all output and input to desired file. can be used together with log option if set as a boolean. */
             dump?: any;
-            /** debug mode. enables usage of the debug method. */
+            /** debug mode. enables usage of the `debug` method. also creates a debug console which will display when pressing F12. it will display all log and debug messages. */
             debug?: boolean;
             /** Array of keys in their full format (e.g. C-c) to ignore when keys are locked. Useful for creating a key that will always exit no matter whether the keys are locked. */
             ignoreLocked?: string[];
+
+            /** Do not clear the screen, only scroll down enough to make room for the elements on the screen. do not use the alternate screenbuffer. useful for writing a CLI tool or some kind of prompt (experimental - see test/widget-noalt.js) */
+            noAlt?: boolean;
+
+            /** Options for the cursor. */
+            cursor?: CursorOptions;
         }
 
+        export interface CursorOptions {
+            /** have blessed draw a custom cursor and hide the terminal cursor (experimental). */
+            artificial?: boolean;
+            /** shape of the artificial cursor. can be: block, underline, or line. */
+            shape?: string; //'block'|'underline'|'line';
+            /** whether the artificial cursor blinks. */
+            blink?: boolean;
+            /** color of the artificial cursor. accepts any valid color value (null is default). */
+            color?: string;
+        }
 
-        export interface IScreen extends INode
+        export interface ScreenEventCallback {
+            (character:string, keyCode:KeyCode): void;
+        }
+
+        export class Screen extends Node
         {
+            constructor(options?:ScreenOptions);
+
             /** the blessed Program object. */
             program: any;
             /** the blessed Tput object (only available if you passed tput: true to the Program constructor.) */
@@ -169,28 +195,31 @@ declare module "blessed"
             cols: number;
             /** same as screen.height. */
             rows: number;
-            /** left offset, always zero. */
+
+            /** calculated relative left offset. */
             left: number;
-            /** left offset, always zero. */
-            rleft: number;
-            /** right offset, always zero. */
+            /** calculated relative right offset. */
             right: number;
-            /** right offset, always zero. */
-            rright: number;
-            /** top offset, always zero. */
+            /** calculated relative top offset. */
             top: number;
-            /** top offset, always zero. */
-            rtop: number;
-            /** bottom offset, always zero. */
+            /** calculated relative bottom offset. */
             bottom: number;
-            /** bottom offset, always zero. */
-            rbottom: number;
+            /** calculated absolute left offset. */
+            aleft: number;
+            /** calculated absolute right offset. */
+            aright: number;
+            /** calculated absolute top offset. */
+            atop: number;
+            /** calculated absolute bottom offset. */
+            abottom: number;
+
+
             /** whether the focused element grabs all keypresses. */
             grabKeys: boolean;
             /** prevent keypresses from being received by any element. */
             lockKeys: boolean;
             /** the currently hovered element. only set if mouse events are bound. */
-            hover: IElement;
+            hover: Element;
             /** set or get window title. */
             title: string;
 
@@ -201,21 +230,21 @@ declare module "blessed"
             /** allocate a new pending screen buffer and a new output screen buffer. */
             alloc(): void;
             /** draw the screen based on the contents of the screen buffer. */
-            draw(start, end): void;
+            draw(start:number, end:number): void;
             /** render all child elements, writing all data to the screen buffer and drawing the screen. */
             render(): void;
             /** clear any region on the screen. */
-            clearRegion(x1, x2, y1, y2): void;
+            clearRegion(x1:number, x2:number, y1:number, y2:number): void;
             /** fill any region with a character of a certain attribute. */
-            fillRegion(attr, ch, x1, x2, y1, y2): void;
+            fillRegion(attr:number, ch:string, x1:number, x2:number, y1:number, y2:number): void;
             /** focus element by offset of focusable elements. */
-            focusOffset(offset): void;
+            focusOffset(offset:number): void;
             /** focus previous element in the index. */
             focusPrevious(): void;
             /** focus next element in the index. */
             focusNext(): void;
             /** push element on the focus stack (equivalent to screen.focused = el). */
-            focusPush(element): void;
+            focusPush(element:Element): void;
             /** pop element off the focus stack. */
             focusPop(): void;
             /** save the focused element. */
@@ -225,47 +254,64 @@ declare module "blessed"
             /** "rewind" focus to the last visible and attached element. */
             rewindFocus(): void;
             /** bind a keypress listener for a specific key. */
-            key(keyEvents:string|string[], callback:(character:string, keyCode:IKeyCode) => void) :void;
+            key(keyEvents:string|string[], callback:ScreenEventCallback): void;
             /** bind a keypress listener for a specific key once. */
-            onceKey(keyEvents:string|string[], callback:(character:string, keyCode:IKeyCode) => void) :void;
+            onceKey(keyEvents:string|string[], callback:ScreenEventCallback): void;
             /** remove a keypress listener for a specific key. */
-            unkey(name:string, listener): void;
+            unkey(name:string, listener:ScreenEventCallback): void;
             /** spawn a process in the foreground, return to blessed app after exit. */
-            spawn(file:string, args, options): void;
+            spawn(file:string, args:string[], options:NodeChildProcessExecOptions): child_process.ChildProcess;
             /** spawn a process in the foreground, return to blessed app after exit. executes callback on error or exit. */
-            exec(file:string, args, options, callback): void;
+            exec(file:string, args:string[], options:NodeChildProcessExecOptions, callback:GenericCallback): child_process.ChildProcess;
             /** read data from text editor. */
-            readEditor(options:{}, callback): void;
+            readEditor(options:{}, callback:GenericCallback): void;
             /** set effects based on two events and attributes. */
-            setEffects(el, fel, over, out, effects, temp): void;
+            setEffects(el:Element, fel:Element, over:string, out:string, effects:Style, temp?:string): void;
             /** insert a line into the screen (using csr: this bypasses the output buffer). */
-            insertLine(n, y, top, bottom): void;
+            insertLine(n:number, y:number, top:number, bottom:number): void;
             /** delete a line from the screen (using csr: this bypasses the output buffer). */
-            deleteLine(n, y, top, bottom): void;
+            deleteLine(n:number, y:number, top:number, bottom:number): void;
             /** insert a line at the bottom of the screen. */
-            insertBottom(top, bottom): void;
+            insertBottom(top:number, bottom:number): void;
             /** insert a line at the top of the screen. */
-            insertTop(top, bottom): void;
+            insertTop(top:number, bottom:number): void;
             /** delete a line at the bottom of the screen. */
-            deleteBottom(top, bottom): void;
+            deleteBottom(top:number, bottom:number): void;
             /** delete a line at the top of the screen. */
-            deleteTop(top, bottom): void;
+            deleteTop(top:number, bottom:number): void;
+
+            /** enable mouse events for the screen and optionally an element (automatically called when a form of on('mouse') is bound). */
+            enableMouse(el?:Element): void;
+            /** enable keypress events for the screen and optionally an element (automatically called when a form of on('keypress') is bound). */
+            enableKeys(el?:Element): void;
+            /** enable key and mouse events. calls bot enableMouse and enableKeys. */
+            enableInput(el?:Element): void;
+
+            /** attempt to copy text to clipboard using iTerm2's propriety sequence. returns true if successful. */
+            copyToClipboard(text:string): boolean;
+            /** attempt to change cursor shape. will not work in all terminals (see artificial cursors for a solution to this). returns true if successful. */
+            cursorShape(shape:string, blink:boolean): boolean;
+            /** attempt to change cursor color. returns true if successful. */
+            cursorColor(color: string): boolean;
+            /** attempt to reset cursor. returns true if successful. */
+            cursorReset(): boolean;
+
         }
 
-        export interface IElementOptions extends INodeOptions
+        export interface ElementOptions extends NodeOptions
         {
             fg?: string;
             bg?: string;
-            scrollbar?: IColorPair;
-            focus?: IStyle;
-            hover?: IStyle;
+            scrollbar?: ColorPair;
+            focus?: Style;
+            hover?: Style;
 
             /** border object, see below. */
-            border?: IBorder;
+            border?: Border;
             /** positioning options. */
-            position?: IPosition;
+            position?: Position;
             /** amount of padding on the inside of the element. can be a number or an object containing the properties: left, right, top, and bottom. */
-            padding?: number|IPadding;
+            padding?: number|Padding;
             /** element's text content. */
             content?: string;
             /** element is clickable. */
@@ -294,18 +340,22 @@ declare module "blessed"
             scrollable?: boolean;
             /** background character (default is whitespace ). */
             ch?: string;
+            /** allow the element to be dragged with the mouse. */
+            draggable?: boolean;
         }
 
-        export interface IElement extends INode
+        export class Element extends Node
         {
+            constructor(options?:ElementOptions);
+
             /** name of the element. useful for form submission. */
             name: string;
             /** border object. */
-            border: IBorder;
+            border: Border;
             /** contains attributes (e.g. fg/bg/underline). see above. */
-            style: IStyle;
+            style: Style;
             /** raw width, height, and offsets. */
-            position: IPosition;
+            position: Position;
             /** type of border (line or bg). bg by default. */
             type: string; //'line'|'bg';
             /** character to use if bg type, default is space. */
@@ -322,100 +372,112 @@ declare module "blessed"
             width: number;
             /** calculated height. */
             height: number;
-            /** calculated absolute left offset. */
-            left: number;
-            /** calculated absolute right offset. */
-            right: number;
-            /** calculated absolute top offset. */
-            top: number;
-            /** calculated absolute bottom offset. */
-            bottom: number;
-            /** calculated relative left offset. */
-            rleft: number;
-            /** calculated relative right offset. */
-            rright: number;
-            /** calculated relative top offset. */
-            rtop: number;
-            /** calculated relative bottom offset. */
-            rbottom: number;
+            /** whether the element is draggable. set to true to allow dragging. */
+            draggable: boolean;
 
-            sattr();
+
+
+            /** calculated relative left offset. */
+            left: number;
+            /** calculated relative right offset. */
+            right: number;
+            /** calculated relative top offset. */
+            top: number;
+            /** calculated relative bottom offset. */
+            bottom: number;
+            /** calculated absolute left offset. */
+            aleft: number;
+            /** calculated absolute right offset. */
+            aright: number;
+            /** calculated absolute top offset. */
+            atop: number;
+            /** calculated absolute bottom offset. */
+            abottom: number;
+
+
             /** write content and children to the screen buffer. */
-            render() :void;
+            render(): void;
             /** hide element. */
-            hide() :void;
+            hide(): void;
             /** show element. */
-            show() :void;
+            show(): void;
             /** toggle hidden/shown. */
-            toggle() :void;
+            toggle(): void;
             /** focus element. */
-            focus() :void;
+            focus(): void;
             /** bind a keypress listener for a specific key. */
-            key(name:string|string[], listener:(character?:any, keyCode?:any) => void) :void;
+            key(name:string|string[], listener:(character?:any, keyCode?:any) => void): void;
             /** bind a keypress listener for a specific key once. */
-            onceKey(name:string, listener:() => void) :void;
+            onceKey(name:string, listener:() => void): void;
             /** remove a keypress listener for a specific key. */
-            unkey(name:string, listener:() => void) :void;
+            unkey(name:string, listener:() => void): void;
             /** same as el.on('screen', ...) except this will automatically cleanup listeners after the element is detached. */
-            onScreenEvent(type, listener:(...args:any[]) => void) :void;
+            onScreenEvent(event:string, listener:(...args:any[]) => void): void;
             /** set the z-index of the element (changes rendering order). */
-            setIndex(z:number) :void;
+            setIndex(z:number): void;
             /** put the element in front of its siblings. */
-            setFront() :void;
+            setFront(): void;
             /** put the element in back of its siblings. */
-            setBack() :void;
+            setBack(): void;
             /** set the label text for the top-left corner. example options: {text:'foo',side:'left'} */
-            setLabel(textOrOptions:string|{}) :void;
+            setLabel(textOrOptions:string|{}): void;
             /** remove the label completely. */
-            removeLabel() :void;
+            removeLabel(): void;
             /** set the hover text for the bottom-right corner. example options: {text:'foo'} */
-            setHover(textOrOptions:string|{}) :void;
+            setHover(textOrOptions:string|{}): void;
             /** remove the hover label completely. */
-            removeHover() :void;
+            removeHover(): void;
             /** set the content. note: when text is input, it will be stripped of all non-SGR escape codes, tabs will be replaced with 8 spaces, and tags will be replaced with SGR codes (if enabled). */
-            setContent(text:string) :void;
+            setContent(text:string): void;
             /** return content, slightly different from el.content. assume the above formatting. */
-            getContent() :void;
+            getContent(): void;
             /** similar to setContent, but ignore tags and remove escape codes. */
-            setText(text:string) :void;
+            setText(text:string): void;
             /** similar to getContent, but return content with tags and escape codes removed. */
-            getText() :void;
+            getText(): void;
             /** insert a line into the box's content. */
-            insertLine(index:number, lines:string|string[]) :void;
+            insertLine(index:number, lines:string|string[]): void;
             /** delete a line from the box's content. */
-            deleteLine(index:number) :void;
+            deleteLine(index:number, numLines:number): void;
             /** get a line from the box's content. */
-            getLine(index:number) :void;
+            getLine(index:number): void;
             /** get a line from the box's content from the visible top. */
-            getBaseLine(index:number) :void;
+            getBaseLine(index:number): void;
             /** set a line in the box's content. */
-            setLine(index:number, line:string) :void;
+            setLine(index:number, line:string): void;
             /** set a line in the box's content from the visible top. */
-            setBaseLine(index:number, line:string) :void;
+            setBaseLine(index:number, line:string): void;
             /** clear a line from the box's content. */
-            clearLine(index:number) :void;
+            clearLine(index:number): void;
             /** clear a line from the box's content from the visible top. */
-            clearBaseLine(index:number) :void;
+            clearBaseLine(index:number): void;
             /** insert a line at the top of the box. */
-            insertTop(lines:string|string[]) :void;
+            insertTop(lines:string|string[]): void;
             /** insert a line at the bottom of the box. */
-            insertBottom(lines:string|string[]) :void;
+            insertBottom(lines:string|string[]): void;
             /** delete a line at the top of the box. */
-            deleteTop() :void;
+            deleteTop(): void;
             /** delete a line at the bottom of the box. */
-            deleteBottom() :void;
+            deleteBottom(): void;
             /** unshift a line onto the top of the content. */
-            unshiftLine(lines:string|string[]) :void;
+            unshiftLine(lines:string|string[]): void;
             /** shift a line off the top of the content. */
-            shiftLine(index:number) :void;
+            shiftLine(index:number): void;
             /** push a line onto the bottom of the content. */
-            pushLine(lines:string|string[]) :void;
+            pushLine(lines:string|string[]): void;
             /** pop a line off the bottom of the content. */
-            popLine(index:number) :void;
+            popLine(index:number): void;
             /** an array containing the content lines. */
-            getLines() :void;
+            getLines(): void;
             /** an array containing the lines as they are displayed on the screen. */
-            getScreenLines() :void;
+            getScreenLines(): void;
+            /** get a string's real length, taking into account tags. */
+            textLength(text:string): number;
+
+            /** enable dragging of the element. */
+            enableDrag(): void;
+            /** disable dragging of the element. */
+            disableDrag(): void;
         }
 
 
@@ -423,24 +485,94 @@ declare module "blessed"
         // Box
         //
 
-        export interface IBoxOptions extends IElementOptions {
+        export interface BoxOptions extends ElementOptions {
             // intentionally empty
         }
 
-        export interface IBox extends IElement {
+        export class Box extends Element {
+            constructor(options?:BoxOptions);
             // intentionally empty
         }
+
+
+        //
+        // ScrollableBox
+        //
+
+        export interface ScrollableBoxOptions extends BoxOptions {
+            /** a limit to the childBase. default is `Infinity`. */
+            baseLimit: number;
+            /** a option which causes the ignoring of `childOffset`. this in turn causes the childBase to change every time the element is scrolled. */
+            alwaysScroll: boolean;
+            /** object enabling a scrollbar. */
+            scrollbar: ScrollBar;
+        }
+
+        /** A box with scrollable content. */
+        export class ScrollableBox extends Box {
+            constructor(options?:ScrollableBoxOptions);
+
+            /** the offset of the top of the scroll content. */
+            childBase: number;
+            /** the offset of the chosen item/line. */
+            childOffset: number;
+            /** scroll the content by a relative offset. */
+            scroll(offset:number): void;
+            /** scroll the content to an absolute index. */
+            scrollTo(index:number): void;
+            /** same as `scrollTo`. */
+            setScroll(index:number): void;
+            /** set the current scroll index in percentage (0-100). */
+            setScrollPerc(perc:number): void;
+            /** get the current scroll index in lines. */
+            getScroll(): number;
+            /** get the actual height of the scrolling area. */
+            getScrollHeight(): number;
+            /** get the current scroll index in percentage. */
+            getScrollPerc(): number;
+            /** reset the scroll index to its initial state. */
+            resetScroll(): void;
+
+        }
+
+        export interface ScrollBar {
+            /** style of the scrollbar. */
+            style: Style;
+            /** style of the scrollbar track if present (takes regular style options). */
+            track: Style;
+        }
+
+
+        //
+        // ScrollableText
+        //
+
+        export interface ScrollableTextOptions extends ScrollableBoxOptions {
+            /** whether to enable automatic mouse support for this element. */
+            mouse: boolean;
+            /** use predefined keys for navigating the text. */
+            keys: boolean;
+            /** use vi keys with the `keys` option. */
+            vi: boolean;
+        }
+
+        /** __DEPRECATED__ - Use Box with the `scrollable` and `alwaysScroll` options instead.  A scrollable text box which can display and scroll text, as well as handle pre-existing newlines and escape codes. */
+        export class ScrollableText extends ScrollableBox {
+            constructor(options?:ScrollableTextOptions);
+        }
+
 
 
         //
         // Text
         //
 
-        export interface ITextOptions extends IElementOptions {
+        export interface TextOptions extends ElementOptions {
             align?: string; //'left'|'center'|'right';
         }
 
-        export interface IText extends IElement {
+        export class Text extends Element {
+            constructor(options?:TextOptions);
             // intentionally empty
         }
 
@@ -449,12 +581,13 @@ declare module "blessed"
         // Line
         //
 
-        export interface ILineOptions extends IBoxOptions {
+        export interface LineOptions extends BoxOptions {
             orientation?: string; //'vertical'|'horizontal';
-            style?: IStyle;
+            style?: Style;
         }
 
-        export interface ILine extends IBox {
+        export class Line extends Box {
+            constructor(options?:LineOptions);
             // intentionally empty
         }
 
@@ -463,14 +596,14 @@ declare module "blessed"
         // List
         //
 
-        export interface IListStyle extends IStyle {
-            selected?: IStyle;
-            item?: IStyle;
+        export interface ListStyle extends Style {
+            selected?: Style;
+            item?: Style;
         }
 
-        export interface IListOptions extends IBoxOptions
+        export interface ListOptions extends BoxOptions
         {
-            style?: IListStyle;
+            style?: ListStyle;
 
             /** whether to automatically enable mouse support for this list (allows clicking items). */
             mouse?: boolean;
@@ -486,68 +619,524 @@ declare module "blessed"
             interactive?: boolean;
         }
 
-        export interface IList extends IBox
+        export class List extends Box
         {
+            constructor(options?:ListOptions);
+
             /** The text of the currently selected item. */
             value:string;
             /** The items in the list. */
             items:string[];
+            /** The items in the list. */
+            ritems:string[];
             /** The index of the current selection. */
             selected:number;
 
             /** add an item based on a string. */
-            addItem(text:string) :void;
+            addItem(text:string): void;
             /** returns the item index from the list. child can be an element, index, or string. */
-            getItemIndex(child:Element|number|string) :void;
+            getItemIndex(child:Element|number|string): void;
             /** returns the item element. child can be an element, index, or string. */
-            getItem(child:Element|number|string) :void;
+            getItem(child:Element|number|string): void;
             /** removes an item from the list. child can be an element, index, or string. */
-            removeItem(child:Element|number|string) :void;
+            removeItem(child:Element|number|string): void;
             /** clears all items from the list. */
-            clearItems() :void;
+            clearItems(): void;
             /** sets the list items to multiple strings. */
-            setItems(items:string[]) :void;
+            setItems(items:string[]): void;
             /** Sets the current selection by absolute index. */
-            select(index:number) :void;
+            select(index:number): void;
             /** Changes the current selection based on current offset. */
-            move(offset:number) :void;
+            move(offset:number): void;
             /** select item above selected. */
-            up(amount:number) :void;
+            up(amount:number): void;
             /** select item below selected. */
-            down(amount:number) :void;
+            down(amount:number): void;
             /** show/focus list and pick an item. the callback is executed with the result. */
-            pick(cwd:string, callback:(err:any, file:string) => void) :void;
+            pick(cwd:string, callback:(err:any, file:string) => void): void;
 
             /** show/focus list and pick an item. the callback is executed with the result. */
-            pick(callback:(err:any, file:string) => void) :void;
+            pick(callback:(err:any, file:string) => void): void;
         }
 
         //
         // Input
         //
 
-        export interface IInputOptions extends IBoxOptions {
+        export interface InputOptions extends BoxOptions {
             // intentionally empty
         }
 
-        export interface IInput extends IBox {
+        export class Input extends Box {
+            constructor(options?:InputOptions);
             // intentionally empty
         }
 
-        export interface IInputOptions extends IBoxOptions {
+        export interface InputOptions extends BoxOptions {
             // intentionally empty
         }
+
+        //
+        // Textarea
+        //
+
+        export interface TextareaOptions extends InputOptions
+        {
+            /** use pre-defined keys (`i` or `enter` for insert, `e` for editor, `C-e` for editor while inserting). */
+            keys?: boolean;
+            /** use pre-defined mouse events (right-click for editor). */
+            mouse?: boolean;
+            /** call `readInput()` when the element is focused. automatically unfocus. */
+            inputOnFocus?: boolean;
+        }
+
+        /** A box which allows multiline text input. */
+        export class Textarea extends Input
+        {
+            constructor(options?:TextareaOptions);
+
+            /** the input text. __read-only__. */
+            value: string;
+
+            /** submit the textarea (emits `submit`). */
+            submit(): void;
+            /** cancel the textarea (emits `cancel`). */
+            cancel(): void; 
+            /** grab key events and start reading text from the keyboard. takes a callback which receives the final value. */
+            readInput(callback:GenericCallback): void;
+            /** open text editor in `$EDITOR`, read the output from the resulting file. takes a callback which receives the final value. */
+            readEditor(callback:GenericCallback): void;
+            /** the same as `this.value`, for now. */
+            getValue(): string;
+            /** clear input. */
+            clearValue(): void;
+            /** set value. */
+            setValue(text:string): void;
+        }
+
+
+        //
+        // Textbox
+        //
+
+        export interface TextboxOptions extends TextareaOptions {
+            /** completely hide text. */
+            secret?: boolean;
+            /** replace text with asterisks (`*`). */
+            censor?: boolean;
+        }
+
+        /** A box which allows text input. */
+        export class Textbox extends Textarea {
+            constructor(options?:TextboxOptions);
+
+            /** completely hide text. */
+            secret: boolean;
+            /** replace text with asterisks (`*`). */
+            censor: boolean;
+        }
+
 
         //
         // Button
         //
 
-        export interface IButton extends IInput {
-            // on(event:string, callback:() => void);
+        export interface ButtonOptions extends InputOptions {
+        }
+
+        /** A button which can be focused and allows key and mouse input. */
+        export class Button extends Input {
+            constructor(options?:ButtonOptions);
+
+            // on(event:string, callback:() => void): void;
             // on(event:'press', callback:() => void);
 
             /** press button.  emits 'press'. */
-            press() :void;
+            press(): void;
+        }
+
+
+        //
+        // ProgressBar
+        //
+
+        export interface ProgressBarOptions extends InputOptions {
+            /** can be `horizontal` or `vertical`. */
+            orientation: string;
+            /** the character to fill the bar with (default is space). */
+            pch: string;
+            /** the amount filled (0 - 100). */
+            filled: number;
+            /** same as `filled`. */
+            value: number;
+            /** enable key support. */
+            keys: boolean;
+            /** enable mouse support. */
+            mouse: boolean;
+
+            /** contains the extra key 'bar', which defines the style of the bar contents itself. */
+            style: ProgressBarStyle;
+        }
+
+        export interface ProgressBarStyle extends Style {
+            /** style of the bar contents itself. */
+            bar: Style;
+        }
+
+
+        export class ProgressBar extends Input {
+            constructor(options?:ProgressBarOptions);
+
+            /** progress the bar by a fill amount. */
+            progress(amount:number): void;
+            /** set progress to specific amount. */
+            setProgress(amount:number): void;
+            /** reset the bar. */
+            reset(): void;
+        }
+
+        //
+        // Checkbox
+        //
+        
+        export interface CheckboxOptions extends InputOptions {
+            /** whether the element is checked or not. */
+            checked: boolean;
+            /** enable mouse support. */
+            mouse: boolean;
+        }
+        
+        
+        /** A checkbox which can be used in a form element. */
+        export class Checkbox extends Input
+        {
+            constructor(options?:CheckboxOptions);
+
+            /** the text next to the checkbox (do not use setcontent, use `check.text = ''`). */
+            text: string;
+            /** whether the element is checked or not. */
+            checked: boolean;
+            /** same as `checked`. */
+            value: boolean;
+
+            /** check the element. */
+            check(): void;
+            /** uncheck the element. */
+            uncheck(): void;
+            /** toggle checked state. */
+            toggle(): void;
+        }
+
+
+        //
+        // RadioSet
+        //
+        
+        export interface RadioSetOptions extends BoxOptions {
+        }
+        
+        
+        export class RadioSet extends Box {
+            constructor(options?:RadioSetOptions);
+        }
+
+
+        //
+        // RadioButton
+        //
+        
+        export interface RadioButtonOptions extends CheckboxOptions {
+        }
+        
+        
+        /** A radio button which can be used in a form element. */
+        export class RadioButton extends Checkbox {
+            constructor(options?:RadioButtonOptions);
+        }
+
+
+
+        //
+        // Prompt
+        //
+        
+        export interface PromptOptions extends BoxOptions {
+        }
+        
+        
+        /** A prompt box containing a text input, okay, and cancel buttons (automatically hidden). */
+        export class Prompt extends Box
+        {
+            constructor(options?:PromptOptions);
+
+            /** show the prompt and wait for the result of the textbox. set text and initial value */
+            input(text:string, value:any, callback:(val:any) => void): void;
+            /** show the prompt and wait for the result of the textbox. set text and initial value */
+            setInput(text:string, value:any, callback:(val:any) => void): void;
+            /** show the prompt and wait for the result of the textbox. set text and initial value */
+            readInput(text:string, value:any, callback:(val:any) => void): void;
+        }
+
+
+        //
+        // Question
+        //
+        
+        export interface QuestionOptions extends BoxOptions {
+        }
+        
+        
+        /** A question box containing okay and cancel buttons (automatically hidden). */
+        export class Question extends Box
+        {
+            constructor(options?:QuestionOptions);
+
+            /** ask a `question`. `callback` will yield the result. */
+            ask(question:string, callback:(result:any) => void): void;
+        }
+
+
+        //
+        // Message
+        //
+        
+        export interface MessageOptions extends BoxOptions {
+        }
+        
+        
+        /** A box containing a message to be displayed (automatically hidden). */
+        export class Message extends Box
+        {
+            constructor(options?:MessageOptions);
+
+            /** display a message for a time (default is 3 seconds). set time to 0 for a perpetual message that is dismissed on keypress. */
+            log(text:string, timeOrCallback:number|MessageCallback, callback?:MessageCallback): void;
+            /** display a message for a time (default is 3 seconds). set time to 0 for a perpetual message that is dismissed on keypress. */
+            display(text:string, timeOrCallback:number|MessageCallback, callback?:MessageCallback): void;
+            /** display an error in the same way. */
+            error(text:string, timeOrCallback:number|MessageCallback, callback?:MessageCallback): void;
+        }
+
+        export interface MessageCallback {
+            (): void;
+        }
+
+
+        //
+        // Loading
+        //
+        
+        export interface LoadingOptions extends BoxOptions {
+        }
+        
+        /** A box with a spinning line to denote loading (automatically hidden). */
+        export class Loading extends Box
+        {
+            constructor(options?:LoadingOptions);
+
+            /** display the loading box with a message. will lock keys until `stop` is called. */
+            load(text:string): void;
+            /** hide loading box. unlock keys. */
+            stop(): void;
+        }
+
+
+        //
+        // Listbar
+        //
+        
+        export interface ListbarOptions extends BoxOptions
+        {
+            /** Listbar's `style` object includes sub-styles for `selected` and `item`. */
+            style?: ListbarStyle;
+
+            /** set buttons using an object with keys as titles of buttons, containing of objects containing keys of `keys` and `callback`. */
+            items?: ListbarItemSet;
+            /** set buttons using an object with keys as titles of buttons, containing of objects containing keys of `keys` and `callback`. */
+            commands?: ListbarItemSet;
+            /** automatically bind list buttons to keys 0-9. */
+            autoCommandKeys?: boolean;
+        }
+
+        export interface ListbarItemSet {
+            [name: string]: ListbarItem;
+        }
+
+        export interface ListbarItem {
+            keys: string[];
+            callback: GenericCallback;
+        }
+        
+        export interface ListbarStyle extends Style
+        {
+             /** style for a selected item. */
+             selected: Style;
+             /** style for an unselected item. */
+             item: Style;
+        }
+        
+        /** A horizontal list. Useful for a main menu bar. */
+        export class Listbar extends Box
+        {
+            constructor(options?:ListbarOptions);
+
+            /** append an item to the bar. */
+            add(item:ListbarItem, callback:GenericCallback): void;
+            /** append an item to the bar. */
+            addItem(item:ListbarItem, callback:GenericCallback): void;
+            /** append an item to the bar. */
+            appendItem(item:ListbarItem, callback:GenericCallback): void;
+
+            /** select button and execute its callback. */
+            selectTab(index: number): void;
+
+            /** set commands (see `commands` option above). */
+            setItems(commands: ListbarItemSet): void;
+            /** select an item on the bar. */
+            select(offset: number): void;
+            /** remove item from the bar. */
+            removeItem(child:ListbarItem): void;
+            /** move focus relatively across the bar. */
+            move(offset: number): void;
+            /** move focus left relatively across the bar. */
+            moveLeft(offset: number): void;
+            /** move focus right relatively across the bar. */
+            moveRight(offset: number): void;
+        }
+
+
+        //
+        // Log
+        //
+        
+        export interface LogOptions extends ScrollableTextOptions {
+            /** amount of scrollback allowed. default: Infinity. */
+            scrollback?: number;
+            /** scroll to bottom on input even if the user has scrolled up. default: false. */
+            scrollOnInput?: boolean;
+        }
+        
+        
+        /** A log permanently scrolled to the bottom. */
+        export class Log extends ScrollableText
+        {
+            constructor(options?:LogOptions);
+
+            /** amount of scrollback allowed. default: Infinity. */
+            scrollback: number;
+            /** scroll to bottom on input even if the user has scrolled up. default: false. */
+            scrollOnInput: boolean;
+
+            /** add a log line. */
+            log(text:string): void;
+            /** add a log line. */
+            add(text:string): void;
+        }
+
+
+        //
+        // Table
+        //
+        
+        export interface TableOptions extends BoxOptions
+        {
+            /** array of array of strings representing rows (same as `data`). */
+            rows?: string[][];
+            /** array of array of strings representing rows (same as `rows`). */
+            data?: string[][];
+            /** spaces to attempt to pad on the sides of each cell. `2` by default: one space on each side (only useful if the width is shrunken). */
+            pad?: number;
+            /** do not draw inner cells. */
+            noCellBorders?: boolean;
+            /** fill cell borders with the adjacent background color. */
+            fillCellBorders?: boolean;
+
+            /** includes `header` and `cell` substyles. */
+            style?: TableStyle;
+        }
+
+        export interface TableStyle extends Style {
+            /** header style. */
+            header: Style;
+            /** cell style. */
+            cell: Style;
+        }
+        
+        /** A stylized table of text elements. */ 
+        export class Table extends Box
+        {
+            /** includes `header` and `cell` substyles. */
+            style: TableStyle;
+
+            /** set rows in table. array of arrays of strings. */
+            setData(rows: string[][]): void;
+            /** set rows in table. array of arrays of strings. */
+            setRows(rows: string[][]): void;
+        }
+
+
+        //
+        // ListTable
+        //
+        
+        export interface ListTableOptions extends ListOptions
+        {
+            /** array of array of strings representing rows (same as `data`). */
+            rows?: string[][];
+            /** array of array of strings representing rows (same as `rows`). */
+            data?: string[][];
+            /** spaces to attempt to pad on the sides of each cell. `2` by default: one space on each side (only useful if the width is shrunken). */
+            pad?: number;
+              
+            /** do not draw inner cells. */
+            noCellBorders?: boolean;
+
+            /** includes `header` and `cell` substyles. */
+            style?: TableStyle;
+        }
+        
+        export interface ListTableStyle extends TableStyle {
+        }
+        
+        
+        /** A stylized table of text elements with a list. */
+        export class ListTable extends List
+        {
+            constructor(options?:ListTableOptions);
+
+            /** set rows in table. array of arrays of strings. */
+            setData(rows: string[][]): void;
+            /** set rows in table. array of arrays of strings. */
+            setRows(rows: string[][]): void;
+        }
+
+        //
+        // Image
+        //
+        
+        export interface ImageOptions extends BoxOptions {
+            /** path to image. */
+            file: string;
+            /** path to w3mimgdisplay. if a proper w3mimgdisplay path is not given, blessed will search the entire disk for the binary. */
+            w3m: string;
+        }
+        
+        
+        /** Display an image in the terminal (jpeg, png, gif) using w3mimgdisplay. Requires w3m to be installed. X11 required: works in xterm, urxvt, and possibly other terminals. */
+        export class Image extends Box
+        {
+            constructor(options?:ImageOptions);
+
+            /** set the image in the box to a new path. */
+            setImage (img:string, callback:GenericCallback): void;
+            /** clear the current image. */
+            clearImage (callback:GenericCallback): void;
+            /** get the size of an image file in pixels. */
+            imageSize (img:string, callback:GenericCallback): void;
+            /** get the size of the terminal in pixels. */
+            termSize (callback:GenericCallback): void;
+            /** get the pixel to cell ratio for the terminal. */
+            getPixelRatio (callback:GenericCallback): void;
         }
 
 
@@ -555,41 +1144,43 @@ declare module "blessed"
         // Form
         //
 
-        export interface IFormOptions extends IBoxOptions {
+        export interface FormOptions extends BoxOptions {
             /** allow default keys (tab, vi keys, enter). */
             keys?:boolean;
             /** allow vi keys. */
             vi?:boolean;
         }
 
-        export interface IForm extends IBox
+        export class Form extends Box
         {
+            constructor(options?:FormOptions);
+
             /** last submitted data. */
-            submission :any;
+            submission: any;
 
-            // on(event:string,   callback:()     => void) :void;
-            // on(event:'submit', callback:(data) => void) :void;
-            // on(event:'cancel', callback:()     => void) :void;
-            // on(event:'reset',  callback:()     => void) :void;
+            // on(event:string,   callback:()     => void): void;
+            // on(event:'submit', callback:(data) => void): void;
+            // on(event:'cancel', callback:()     => void): void;
+            // on(event:'reset',  callback:()     => void): void;
 
-            next() :void;
-            previous() :void;
+            next(): void;
+            previous(): void;
 
-            resetSelected() :void;
+            resetSelected(): void;
             /** focus first form element. */
-            focusFirst() :void;
+            focusFirst(): void;
             /** focus last form element. */
-            focusLast() :void;
+            focusLast(): void;
             /** focus next form element. */
-            focusNext() :void;
+            focusNext(): void;
             /** focus previous form element. */
-            focusPrevious() :void;
+            focusPrevious(): void;
             /** submit the form. */
-            submit() :void;
+            submit(): void;
             /** discard the form. */
-            cancel() :void;
+            cancel(): void;
             /** clear the form. */
-            reset() :void;
+            reset(): void;
         }
 
 
@@ -597,38 +1188,33 @@ declare module "blessed"
         // FileManager
         //
 
-        export interface IFileManagerOptions extends IListOptions {
+        export interface FileManagerOptions extends ListOptions {
             cwd?: string;
         }
 
-        export interface IDirectoryEntry {
+        export interface DirectoryEntry {
             name: string;
             text: string;
             dir: boolean;
             symlink: boolean;
         }
 
-        export interface IFileManager extends IList
+        export class FileManager extends List
         {
+            constructor(options?:FileManagerOptions);
+
             cwd: string;
 
-            // on(event:string,   callback:()     => void) :void;
-            // on(event:'cd', callback:(data) => void) :void;
-            // on(event:'file', callback:(data) => void) :void;
-
-            useFormatter (formatterFn:(entry:IDirectoryEntry) => IDirectoryEntry) :void;
+            useFormatter (formatterFn:(entry:DirectoryEntry) => DirectoryEntry): void;
 
             /** refresh the file list (perform a readdir on cwd and update the list items). */
-            refresh (cwd?:string, callback?:() => void) :void;
+            refresh (cwd?:string, callback?:() => void): void;
 
             /** refresh the file list. */
-            refresh (callback?:() => void) :void;
-
-            /** pick a single file and return the path in the callback. */
-            // pick (cwd?:string, callback?:(result) => void) :void;
+            refresh (callback?:() => void): void;
 
             /** reset back to original cwd. */
-            reset (cwd?:string, callback?:() => void) :void;
+            reset (cwd?:string, callback?:() => void): void;
         }
 
 
@@ -636,10 +1222,10 @@ declare module "blessed"
         // Terminal
         //
 
-        export interface ITerminalOptions extends IBoxOptions
+        export interface TerminalOptions extends BoxOptions
         {
             /** handler for input data. */
-            handler?: (userInput) => void;
+            handler?: (userInput:Buffer) => void;
             /** name of shell. $SHELL by default. */
             shell?:string;
             /** args for shell. */
@@ -648,15 +1234,31 @@ declare module "blessed"
             cursor?:string; //'line'|'underline'|'block';
         }
 
-        export interface ITerminal extends IBox
+        export class Terminal extends Box
         {
             /** reference to the headless term.js terminal. */
-            term :any;
+            term: any;
             /** reference to the pty.js pseudo terminal. */
-            pty :any;
+            pty: any;
 
             /** write data to the terminal. */
-            write(data:string) :void;
+            write(data:string): void;
+
+            /** nearly identical to `element.screenshot`, however, the specified region includes the terminal's _entire_ scrollback, rather than just what is visible on the screen. */
+            screenshot(xi?:number, xl?:number, yi?:number, yl?:number): string;
+        }
+
+
+        export interface NodeChildProcessExecOptions
+        {
+            cwd?: string;
+            stdio?: any;
+            customFds?: any;
+            env?: any;
+            encoding?: string;
+            timeout?: number;
+            maxBuffer?: number;
+            killSignal?: string;
         }
     }
 
